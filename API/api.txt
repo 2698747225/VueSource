@@ -1,0 +1,2 @@
+$el : 组件的domElement
+$nextTick(fnc)    数据变化渲染完后调用回调函数。并且会返回一个promise，渲染后resolve

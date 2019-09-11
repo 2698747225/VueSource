@@ -1,0 +1,79 @@
+<script>
+    /**
+     *  在Vue框架执行new Vue初始化时，会遍历data对象，并对data对象中的每一个属性进行getter、setter劫持。在AST语法树被转换为render函数后。进行渲染过程中，会访问每个data中的属性，
+        调用到属性的getter方法，这时会对它进行收集，并在修改这个属性时进行，在setter进行响应式处理
+     */
+    // 模拟一个vue响应式
+    // new Vue Init阶段
+    var observer = (object) => {
+        if (!object || !(object instanceof Object)) {
+            return;
+        }
+        Object.keys(object).forEach(key => {
+            reactResolve(object, key, object[key]);
+        });
+    }
+
+    var reactResolve = (object, key, val) => {
+        // dep是一个依赖集合，存放属性的所有观察者，因此理应每个属性都通过一个dep存放
+        const dep = new Dep();
+        Object.defineProperty(object, key, {
+            get() {
+                // 依赖收集
+                // 这里原先是返回object[key]，结果循环栈了
+                dep.addSub(Dep.target);
+                return val;
+            },
+            set(value) {
+                if (value === val) {
+                    return;
+                }
+                dep.notify();
+            }
+        })
+    }
+
+    class Watcher {
+        constructor() {
+            // 总感觉这样保存观察者实例对象有问题，因为只能保存一个观察者，但实时上Vue中每个属性对应一个Dep，每个Dep对应多个观察者
+            Dep.target = this;
+        }
+        update() {
+            console.log('render...');
+        }
+    }
+
+    class Dep {
+        constructor() {
+            this._subs = [];
+        }
+        addSub(watcher) {
+            if (!watcher || this._subs.includes(watcher)) {
+                return;
+            }
+            this._subs.push(watcher);
+        }
+        notify() {
+            this._subs.forEach(watcher => watcher.update());
+        }
+    }
+
+    class Vue {
+        constructor(options) {
+            this._data = options.data;
+            observer(this._data);
+            // 模拟一个观察者
+            new Watcher();
+            // 模拟render阶段收集访问属性
+            this._data.aut;
+            this._data.age;
+        }
+    }
+    // 测试
+    var vue = new Vue({
+        data: {
+            aut: 'liulingyu',
+            age: 23
+        }
+    })
+</script>
