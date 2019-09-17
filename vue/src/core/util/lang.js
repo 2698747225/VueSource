@@ -10,7 +10,7 @@ export const unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037
 /**
  * Check if a string starts with $ or _
  */
-export function isReserved (str: string): boolean {
+export function isReserved(str: string): boolean {
   const c = (str + '').charCodeAt(0)
   return c === 0x24 || c === 0x5F
 }
@@ -18,7 +18,7 @@ export function isReserved (str: string): boolean {
 /**
  * Define a property.
  */
-export function def (obj: Object, key: string, val: any, enumerable?: boolean) {
+export function def(obj: Object, key: string, val: any, enumerable ? : boolean) {
   Object.defineProperty(obj, key, {
     value: val,
     enumerable: !!enumerable,
@@ -31,11 +31,12 @@ export function def (obj: Object, key: string, val: any, enumerable?: boolean) {
  * Parse simple path.
  */
 const bailRE = new RegExp(`[^${unicodeRegExp.source}.$_\\d]`)
-export function parsePath (path: string): any {
+export function parsePath(path: string): any {
   if (bailRE.test(path)) {
     return
   }
   const segments = path.split('.')
+  // 这里的obj为组件实例，这里会解析表达式，循环获取对象最后一个属性值，返回
   return function (obj) {
     for (let i = 0; i < segments.length; i++) {
       if (!obj) return

@@ -1,11 +1,24 @@
-import { initMixin } from './init'
-import { stateMixin } from './state'
-import { renderMixin } from './render'
-import { eventsMixin } from './events'
-import { lifecycleMixin } from './lifecycle'
-import { warn } from '../util/index'
+import {
+  initMixin
+} from './init'
+import {
+  stateMixin
+} from './state'
+import {
+  renderMixin
+} from './render'
+import {
+  eventsMixin
+} from './events'
+import {
+  lifecycleMixin
+} from './lifecycle'
+import {
+  warn
+} from '../util/index'
 
-function Vue (options) {
+// Vue实例化的函数
+function Vue(options) {
   if (process.env.NODE_ENV !== 'production' &&
     !(this instanceof Vue)
   ) {
