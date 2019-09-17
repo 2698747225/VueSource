@@ -34,9 +34,12 @@
     }
 
     class Watcher {
-        constructor() {
+        constructor(vm, expOrFunc, options) {
             // 总感觉这样保存观察者实例对象有问题，因为只能保存一个观察者，但实时上Vue中每个属性对应一个Dep，每个Dep对应多个观察者
             Dep.target = this;
+            // 这里expOrFunc如果是表达式需要接续表达式返回一个返回表达式的函数，这里忽略解析过程，默认传入函数类型简化
+            const getter = expOrFunc;
+            getter.call(vm);
         }
         update() {
             console.log('render...');
@@ -63,7 +66,7 @@
             this._data = options.data;
             observer(this._data);
             // 模拟一个观察者
-            new Watcher();
+            new Watcher(this, function () {});
             // 模拟render阶段收集访问属性
             this._data.aut;
             this._data.age;

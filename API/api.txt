@@ -1,2 +1,3 @@
 $el : 组件的domElement
 $nextTick(fnc)    数据变化渲染完后调用回调函数。并且会返回一个promise，渲染后resolve
+$mount      可以通过Vue.$mount手动将一个未挂载的（没有关联DOM元素）的组件手动挂载到dom上
