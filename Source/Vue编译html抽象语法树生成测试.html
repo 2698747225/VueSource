@@ -1,0 +1,184 @@
+<script>
+    /** 
+     *  原理就在于获取一串字符串后对于字符串中<div>(开始标签)，</div>(结束标签),123{{aa}}(基本类型)做正则匹配，把结果放入一个element对象中维护
+     *  关键点一个是在于匹配到任意一个内容后，插入到element后，要截取调匹配的这一部分，把剩下的部分给下次匹配使用。还有一点在于收集到开始标签后，需要把开始标签推入栈中，
+     *  方便收集结束标签修改指针、删栈的时候能够直接找到需要删除的开始标签
+     * 
+     *  具体的思路：
+     *      开始匹配html，匹配到<div id="first">后，先截取掉匹配到的部分，添加根节点为当前节点，修改指针指向当前节点，stack栈中推入当前节点
+     *      继续匹配html，匹配到文本，对模板文本和普通文本做区分，插入到指针所在元素的子元素中，
+     *      继续匹配html，匹配到</div>反标签，从栈中匹配同名标签，栈移除到标签前一位，修改指针到栈中前一位所对应的标签
+     * 
+     *      可以看出指针的作用就是帮助插入子节点，指针一直都指向stack中的最后一个标签，也就是最内层的标签
+     */
+    var ncname = '[a-zA-Z_][\\w\\-\\.]*';
+    var singleAttrIdentifier = /([^\s"'<>/=]+)/
+    var singleAttrAssign = /(?:=)/
+    var singleAttrValues = [
+        /"([^"]*)"+/.source,
+        /'([^']*)'+/.source,
+        /([^\s"'=<>`]+)/.source
+    ]
+    var attribute = new RegExp(
+        '^\\s*' + singleAttrIdentifier.source +
+        '(?:\\s*(' + singleAttrAssign.source + ')' +
+        '\\s*(?:' + singleAttrValues.join('|') + '))?'
+    )
+    var qnameCapture = '((?:' + ncname + '\\:)?' + ncname + ')';
+    var startTagOpen = new RegExp('^<' + qnameCapture);
+    var startTagClose = /^\s*(\/?)>/
+    var endTag = new RegExp('^<\\/' + qnameCapture + '[^>]*>');
+    var defaultTagRE = /\{\{((?:.|\n)+?)\}\}/g
+    var forAliasRE = /(.*?)\s+(?:in|of)\s+(.*)/
+    var stack = [];
+    var root;
+    var currentParent;
+    var index = 0;
+
+    function advance(n) {
+        index += n
+        html = html.substring(n)
+    }
+
+    // 字符串模板转换AST语法树过程
+    function parseHTML() {
+        while (html) {
+            let textEnd = html.indexOf('<');
+            if (textEnd === 0) {
+                if (html.match(endTag)) {
+                    //...process end tag
+                    const endTagMatch = html.match(endTag)
+                    if (endTagMatch) {
+                        advance(endTagMatch[0].length);
+                        parseEndTag(endTagMatch[1]);
+                        continue;
+                    }
+                    continue;
+                }
+                if (html.match(startTagOpen)) {
+                    //...process start tag
+                    const startTagMatch = parseStartTag();
+                    const element = {
+                        type: 1,
+                        tag: startTagMatch.tagName,
+                        lowerCasedTag: startTagMatch.tagName.toLowerCase(),
+                        attrsList: startTagMatch.attrs,
+                        attrsMap: makeAttrsMap(startTagMatch.attrs),
+                        parent: currentParent,
+                        children: []
+                    }
+                    if (!root) {
+                        root = element
+                    }
+                    if (currentParent) {
+                        currentParent.children.push(element);
+                    }
+                    stack.push(element);
+                    currentParent = element;
+                    continue;
+                }
+            } else {
+                //...process text
+                // 收集到下个<之间的text内容
+                text = html.substring(0, textEnd)
+                advance(textEnd)
+                let expression;
+                if (expression = parseText(text)) {
+                    currentParent.children.push({
+                        type: 2,
+                        text,
+                        expression
+                    });
+                } else {
+                    currentParent.children.push({
+                        type: 3,
+                        text,
+                    });
+                }
+                continue;
+            }
+        }
+        return root;
+    }
+
+    // 匹配开始标签，收集attr属性
+    function parseStartTag() {
+        const start = html.match(startTagOpen);
+        if (start) {
+            const match = {
+                tagName: start[1],
+                attrs: [],
+                start: index
+            }
+            advance(start[0].length);
+            let end, attr
+            while (!(end = html.match(startTagClose)) && (attr = html.match(attribute))) {
+                advance(attr[0].length)
+                match.attrs.push({
+                    name: attr[1],
+                    value: attr[3]
+                });
+            }
+            if (end) {
+                match.unarySlash = end[1];
+                advance(end[0].length);
+                match.end = index;
+                return match
+            }
+        }
+    }
+
+    // 
+    function parseEndTag(tagName) {
+        let pos;
+        for (pos = stack.length - 1; pos >= 0; pos--) {
+            if (stack[pos].lowerCasedTag === tagName.toLowerCase()) {
+                break;
+            }
+        }
+        // 如果标签栈中有这个标签，从栈中移除，并修改指针到父级元素
+        if (pos >= 0) {
+            stack.length = pos;
+            currentParent = stack[pos - 1];
+        }
+    }
+
+    // 格式化非标签文本类型
+    function parseText(text) {
+        // 正则匹配是否含有模板变量{{}}
+        if (!defaultTagRE.test(text)) return;
+        // 通过tokens收集字符
+        const tokens = [];
+        let lastIndex = defaultTagRE.lastIndex = 0
+        let match, index
+        // 循环正则匹配
+        while ((match = defaultTagRE.exec(text))) {
+            // 第一个模板字符index
+            index = match.index
+            // 收集从匹配开头到第一个模板字符之间的基本字符串
+            if (index > lastIndex) {
+                tokens.push(JSON.stringify(text.slice(lastIndex, index)))
+            }
+            // 收集模板字符串
+            const exp = match[1].trim()
+            tokens.push(`_s(${exp})`)
+            // 推迟lastIndex
+            lastIndex = index + match[0].length
+        }
+        // 收集尾部基本字符串
+        if (lastIndex < text.length) {
+            tokens.push(JSON.stringify(text.slice(lastIndex)))
+        }
+        return tokens.join('+');
+    }
+
+    // attr属性转换未map类型
+    function makeAttrsMap(attrs) {
+        const map = {}
+        for (let i = 0, l = attrs.length; i < l; i++) {
+            map[attrs[i].name] = attrs[i].value;
+        }
+        return map
+    }
+    var html = '<div>hello,{{name}}.</div>';
+</script>
