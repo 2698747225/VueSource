@@ -1,3 +1,20 @@
 $el : 组件的domElement
 $nextTick(fnc)    数据变化渲染完后调用回调函数。并且会返回一个promise，渲染后resolve
 $mount      可以通过Vue.$mount手动将一个未挂载的（没有关联DOM元素）的组件手动挂载到dom上
+
+directives：
+    v-pre:跳过这个元素和它子元素的编译过程
+
+全局api:
+    Vue.extend(options):创建一个子类的构造器，参数是类组件对象，生成子组件后可以通过$mount挂载到父组件模板上
+    Vue.nextTick：和$nextTick相同，数据渲染完成后回调函数触发
+    Vue.set：添加属性时，由于新的属性没有观察者，没办法触发更新视图，set方法会在原对象上调用defineReact方法添加observer
+    Vue.delete:和set同理
+    Vue.directive:全局指令，全局注册
+    Vue.filter:全局过滤器
+    Vue.component:全局注册组件
+    Vue.use:使用插件，插件中需要有install属性，还需要在Vue.prototype原型上绑定方法，会作为全局方法使用
+    Vue.mixin:全局混入
+    Vue.compile:会重新进parse-optimize-generate-vnode部分
+    Vue.observable:会返回一个对象，源码中实际上是直接调用observer观察这个对象
+    Vue.version:版本号

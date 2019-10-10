@@ -1,0 +1,131 @@
+<!--
+    最根源初是_render函数的执行，这个函数就是挂载阶段实例化watcher构造的时候执行的，目的就是执行render生成vnode树
+
+    而在_render函数中有这一段核心方法
+    vnode = render.call(vm._renderProxy, vm.$createElement);
+    这里的render函数就是下面非render函数返回的ref.render
+
+    var ref = compileToFunctions(template, {
+        outputSourceRange: "development" !== 'production',
+        shouldDecodeNewlines: shouldDecodeNewlines,
+        shouldDecodeNewlinesForHref: shouldDecodeNewlinesForHref,
+        delimiters: options.delimiters,
+        comments: options.comments
+    }, this);
+
+    var compileToFunctions = ref$1.compileToFunctions;
+
+    var ref$1 = createCompiler(baseOptions);
+
+    // createCompileCreator缓存了baseCompile函数，这个函数就是模板类型转换render函数的函数
+    var createCompiler = createCompilerCreator(function baseCompile (template,options) {
+        //把模板解析成抽象的语法树
+        var ast = parse(template.trim(), options);
+        // 配置中有代码优化选项则会对Ast语法树进行优化
+        if (options.optimize !== false) {
+            optimize(ast, options);
+        }
+        var code = generate(ast, options);
+        return {
+            ast: ast,
+            render: code.render,
+            staticRenderFns: code.staticRenderFns
+        }
+    });
+
+    // 目的是为了返回createCompiler函数
+    function createCompilerCreator (baseCompile) {
+        return function createCompiler (baseOptions) {
+            // 内部定义compile方法
+            function compile (template, options) {
+                ···
+                // 将剔除空格后的模板以及合并选项后的配置作为参数传递给baseCompile方法,其中finalOptions为baseOptions和用户options的合并
+                var compiled = baseCompile(template.trim(), finalOptions);
+                {
+                detectErrors(compiled.ast, warn);
+                }
+                compiled.errors = errors;
+                compiled.tips = tips;
+                return compiled
+            }
+            return {
+                compile: compile,
+                compileToFunctions: createCompileToFunctionFn(compile)
+            }
+        }
+    } 
+
+    function createCompileToFunctionFn (compile) {
+        var cache = Object.create(null);
+
+        return function compileToFunctions (template,options,vm) {
+            options = extend({}, options);
+            ···
+            // 缓存的作用：避免重复编译同个模板造成性能的浪费
+            if (cache[key]) {
+                return cache[key]
+            }
+            // 执行编译方法
+            var compiled = compile(template, options);
+            ···
+            // turn code into functions
+            var res = {};
+            var fnGenErrors = [];
+            // 编译出的函数体字符串作为参数传递给createFunction,返回最终的render函数
+            res.render = createFunction(compiled.render, fnGenErrors);
+            // 渲染优化相关
+            res.staticRenderFns = compiled.staticRenderFns.map(function (code) {
+                return createFunction(code, fnGenErrors)
+            });
+            ···
+            return (cache[key] = res)
+        }
+    }
+
+    // 将compileToFunction方法暴露给Vue作为静态方法存在
+    Vue.compile = compileToFunctions;
+
+    总结来说是这样的
+    ref.render就是我们需要的源码渲染函数，
+    而ref.render来自于compileToFunctions(template,options,vm)返回{
+        render:render,
+        staticRenderFns:staticRenderFns
+    }
+    而compileToFunctions由createCompileToFunctionFn(compile)返回
+    而createCompileToFunctionFn是在createCompiler执行后返回的{
+        compile: compile,
+        compileToFunctions: createCompileToFunctionFn(compile)
+    }
+    而createCompiler是createCompilerCreator(baseCompile)返回
+
+
+    createCompilerCreator(baseCompile)会返回createCompiler，这个baseCompile包含parse、优化、generate三个过程是最原始的模板解析方法，
+    而createCompiler接收baseOptions参数后会返回{
+        compile: compile,
+        compileToFunctions: createCompileToFunctionFn(compile)
+    }
+    这个compile方法中会对baseOptions和options进行合并，并且调用外部的baseCompile进行模板编译，可以说是封装了一层的模板编译方法，而这个compile方法会作为参数传给createCompileToFunctionFn
+    createCompileToFunctionFn会返回compileToFunctions函数返回{
+        render:render,
+        staticRenderFns:staticRenderFns
+    }
+
+
+    var createCompile = createCompilerCreator(baseCompile);
+    var compileToFunction = createCompile(baseOptions).compileToFunction; //返回{compile:compile,compileToFunction:createCompileToFunctionFn(compile)}
+                            执行createCompileToFunctionFn(compile)
+    var render = compileToFunction(template,options,vm).render;
+
+    createCompilerCreator(baseCompile){
+        return function createCompile(baseOptions){
+            function compile(template,options){
+                // merge Options
+                baseCompile(template,options)
+            }
+            return {
+                compile,
+                compileToFunction:createCompileToFunctions(compile)
+            }
+        }
+    }
+-->

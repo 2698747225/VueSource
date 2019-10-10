@@ -51,7 +51,6 @@
                     if (endTagMatch) {
                         advance(endTagMatch[0].length);
                         parseEndTag(endTagMatch[1]);
-                        continue;
                     }
                     continue;
                 }
@@ -67,6 +66,10 @@
                         parent: currentParent,
                         children: []
                     }
+                    // 对v-if特殊处理
+                    processIf(element);
+                    // 对v-for特殊处理
+                    processFor(element);
                     if (!root) {
                         root = element
                     }
@@ -180,5 +183,44 @@
         }
         return map
     }
+
+    function getAndRemoveAttr(el, name) {
+        let val
+        if ((val = el.attrsMap[name]) != null) {
+            const list = el.attrsList
+            for (let i = 0, l = list.length; i < l; i++) {
+                if (list[i].name === name) {
+                    list.splice(i, 1)
+                    break
+                }
+            }
+        }
+        return val
+    }
+
+    function processFor(el) {
+        let exp;
+        if ((exp = getAndRemoveAttr(el, 'v‐for'))) {
+            const inMatch = exp.match(forAliasRE);
+            el.for = inMatch[2].trim();
+            el.alias = inMatch[1].trim();
+        }
+    }
+
+    function processIf(el) {
+        // 获取v-if所对应表达式
+        const exp = getAndRemoveAttr(el, 'v‐if');
+        if (exp) {
+            el.if = exp;
+            if (!el.ifConditions) {
+                el.ifConditions = [];
+            }
+            el.ifConditions.push({
+                exp: exp,
+                block: el
+            });
+        }
+    }
+
     var html = '<div>hello,{{name}}.</div>';
 </script>

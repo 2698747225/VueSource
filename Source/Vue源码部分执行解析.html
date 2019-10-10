@@ -1,0 +1,38 @@
+<!--
+    Vue源码针对编译、数据劫持方面所学到的东西
+
+    Vue初始化阶段执行new Vue构造函数（执行_init方法），在init方法中会按顺序执行
+    initLifecycle：初始化生命周期，这个阶段会为组件实例绑定许多状态属性，例如_watcher、_isMounter、_isDestroyed，$root、$children、$parent,以及把组件添到组件树中
+    initEvents：初始化组件事件的过程，这个方法中会把父组件传递给当前vm组件的函数绑定的vm_events对象上，并且这个阶段会给组件绑定$emit、$on、$once、$off对于事件队列处理的方法
+    initRender：初始化渲染结束后就会有属性、slots、vnode等，并且拥有$createElement等vnode节点渲染方法，createElement也是生成vnode的主要方法
+    执行beforeCreate钩子函数
+    initInjections：依赖注入
+    initState：这个节点会收集props、data，并对data中的每个属性进行get、set初始化代理设置，再对每个属性进行observer，进行getter、setter劫持
+    执行created钩子函数
+
+    之后执行$mount函数对模板进行挂载，挂载阶段会判断options中是否有render渲染函数（vue脚手架搭建的根元素初始化时会执行名为h的渲染函数），如果没有render函数就额外需要调用
+    compile编译器先对字符template进行AST语法树的生成，再进行optimize进行优化、最后generate解析成render渲染函数。
+    之后会执行vue.prototype.$mount下的mountComponent方法进行组件挂载，这个方法中会首先执行beforeMount钩子函数（因此mount总是在create后执行），
+    
+    其中关键的代码是：
+
+    // 更新组件视图的函数，这个函数的执行时机是在watcher构造中调用
+    updateComponent = () => {
+      // 第一次进来是为了更新vnode，这里vm_render()里会生成vnode虚拟节点，这里vm._render()会返回一个根据vm生成的vnode节点
+      vm._update(vm._render(), hydrating)
+    }
+
+    vm._render是生成vnode树的方法，vm._update是把vnode树通过dom原生方法转换为真实dom的方法。
+    之后会执行Watcher构造函数的初始化，在初始化中把updateComponent作为vm的监听对象传进去，其中watcher会执行这个getter，由于初始化阶段已经对每个data进行过劫持，因此这个
+    阶段也会让data的dep属性收集观察对象。在vm_.render阶段会render函数是一个完整的，类似下面
+    (function anonymous() {
+        with(this){return _c('div',{attrs:{"id":"app"}},[_c('input',{directives:[{name:"info",rawName:"v-info"},{name:"data",rawName:"v-data"}],attrs:{"type":"text"}}),_v(" "),_m(0),_v(" "),_c('div',[_v("\n        "+_s(message)+"\n    ")])])}
+    })
+    在访问每个节点时，会访问到属性，被劫持的属性就会进行依赖的收集，对于模板的创建时收集依赖，target对象一般为 updateComponent函数
+    function () {
+      vm._update(vm._render(), hydrating);
+    }"
+
+
+
+-->
