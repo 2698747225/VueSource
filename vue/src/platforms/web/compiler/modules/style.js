@@ -1,14 +1,19 @@
 /* @flow */
 
-import { parseText } from 'compiler/parser/text-parser'
-import { parseStyleText } from 'web/util/style'
+import {
+  parseText
+} from 'compiler/parser/text-parser'
+import {
+  parseStyleText
+} from 'web/util/style'
 import {
   getAndRemoveAttr,
   getBindingAttr,
   baseWarn
 } from 'compiler/helpers'
 
-function transformNode (el: ASTElement, options: CompilerOptions) {
+function transformNode(el: ASTElement, options: CompilerOptions) {
+  // 警告日志
   const warn = options.warn || baseWarn
   const staticStyle = getAndRemoveAttr(el, 'style')
   if (staticStyle) {
@@ -28,13 +33,13 @@ function transformNode (el: ASTElement, options: CompilerOptions) {
     el.staticStyle = JSON.stringify(parseStyleText(staticStyle))
   }
 
-  const styleBinding = getBindingAttr(el, 'style', false /* getStatic */)
+  const styleBinding = getBindingAttr(el, 'style', false /* getStatic */ )
   if (styleBinding) {
     el.styleBinding = styleBinding
   }
 }
 
-function genData (el: ASTElement): string {
+function genData(el: ASTElement): string {
   let data = ''
   if (el.staticStyle) {
     data += `staticStyle:${el.staticStyle},`

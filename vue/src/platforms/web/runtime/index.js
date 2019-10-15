@@ -2,9 +2,17 @@
 
 import Vue from 'core/index'
 import config from 'core/config'
-import { extend, noop } from 'shared/util'
-import { mountComponent } from 'core/instance/lifecycle'
-import { devtools, inBrowser } from 'core/util/index'
+import {
+  extend,
+  noop
+} from 'shared/util'
+import {
+  mountComponent
+} from 'core/instance/lifecycle'
+import {
+  devtools,
+  inBrowser
+} from 'core/util/index'
 
 import {
   query,
@@ -15,7 +23,9 @@ import {
   isUnknownElement
 } from 'web/util/index'
 
-import { patch } from './patch'
+import {
+  patch
+} from './patch'
 import platformDirectives from './directives/index'
 import platformComponents from './components/index'
 
@@ -34,9 +44,10 @@ extend(Vue.options.components, platformComponents)
 Vue.prototype.__patch__ = inBrowser ? patch : noop
 
 // public mount method
+// web下，$mount函数。Vue在初始化调用$mount时不是调用的这个$mount，而是重写这个$mount函数然后最后调用
 Vue.prototype.$mount = function (
-  el?: string | Element,
-  hydrating?: boolean
+  el ? : string | Element, // 需要挂载的元素
+  hydrating ? : boolean // 服务器端渲染相关
 ): Component {
   el = el && inBrowser ? query(el) : undefined
   return mountComponent(this, el, hydrating)
