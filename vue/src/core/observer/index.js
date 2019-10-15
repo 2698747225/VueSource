@@ -37,7 +37,7 @@ export function toggleObserving(value: boolean) {
   shouldObserve = value
 }
 /**
- *  看了下，从initData开始传入vm.$options.data到observer方法为属性建立观察者，之后会对其中每个数组类型、对象类型进行遍历，保证每个属性的都有个__ob__属性（observer实例）
+ *  看了下，从initData开始传入vm.$options.data到observer方法为属性建立观察者，之后会对其中每个数组类型、对象类型进行遍历，保证每个对象的都有个__ob__属性（observer实例）
  */
 /**
  * Observer class that is attached to each observed
