@@ -2,8 +2,13 @@
 
 import config from '../config'
 import Watcher from '../observer/watcher'
-import Dep, { pushTarget, popTarget } from '../observer/dep'
-import { isUpdatingChildComponent } from './lifecycle'
+import Dep, {
+  pushTarget,
+  popTarget
+} from '../observer/dep'
+import {
+  isUpdatingChildComponent
+} from './lifecycle'
 
 import {
   set,
@@ -28,32 +33,40 @@ import {
   isReservedAttribute
 } from '../util/index'
 
+// 共享属性定义
 const sharedPropertyDefinition = {
   enumerable: true,
   configurable: true,
   get: noop,
   set: noop
 }
-
-export function proxy (target: Object, sourceKey: string, key: string) {
-  sharedPropertyDefinition.get = function proxyGetter () {
+/**
+ * @param sourceKey 组件对象的data
+ * @param key data中的属性名，相当于是三级对象属性
+ */
+// 创建一个代理对象、添加get、set方法，
+export function proxy(target: Object, sourceKey: string, key: string) {
+  sharedPropertyDefinition.get = function proxyGetter() {
     return this[sourceKey][key]
   }
-  sharedPropertyDefinition.set = function proxySetter (val) {
+  sharedPropertyDefinition.set = function proxySetter(val) {
     this[sourceKey][key] = val
   }
+  // 把data中的属性绑定到组件上
   Object.defineProperty(target, key, sharedPropertyDefinition)
 }
 
-export function initState (vm: Component) {
+// 收集组件参数中的被观察对象(vm.$options.data)
+export function initState(vm: Component) {
   vm._watchers = []
   const opts = vm.$options
   if (opts.props) initProps(vm, opts.props)
   if (opts.methods) initMethods(vm, opts.methods)
   if (opts.data) {
+    // 这里会初始化组件的数据
     initData(vm)
   } else {
-    observe(vm._data = {}, true /* asRootData */)
+    observe(vm._data = {}, true /* asRootData */ )
   }
   if (opts.computed) initComputed(vm, opts.computed)
   if (opts.watch && opts.watch !== nativeWatch) {
@@ -61,7 +74,7 @@ export function initState (vm: Component) {
   }
 }
 
-function initProps (vm: Component, propsOptions: Object) {
+function initProps(vm: Component, propsOptions: Object) {
   const propsData = vm.$options.propsData || {}
   const props = vm._props = {}
   // cache prop keys so that future props updates can iterate using Array
@@ -79,7 +92,7 @@ function initProps (vm: Component, propsOptions: Object) {
     if (process.env.NODE_ENV !== 'production') {
       const hyphenatedKey = hyphenate(key)
       if (isReservedAttribute(hyphenatedKey) ||
-          config.isReservedAttr(hyphenatedKey)) {
+        config.isReservedAttr(hyphenatedKey)) {
         warn(
           `"${hyphenatedKey}" is a reserved attribute and cannot be used as component prop.`,
           vm
@@ -109,11 +122,14 @@ function initProps (vm: Component, propsOptions: Object) {
   toggleObserving(true)
 }
 
-function initData (vm: Component) {
+// 对组件的data处理，获取options.data，并对他们进行observer
+function initData(vm: Component) {
+  // 获取data
   let data = vm.$options.data
-  data = vm._data = typeof data === 'function'
-    ? getData(data, vm)
-    : data || {}
+  data = vm._data = typeof data === 'function' ?
+    getData(data, vm) :
+    data || {}
+  // 非对象类型，警告
   if (!isPlainObject(data)) {
     data = {}
     process.env.NODE_ENV !== 'production' && warn(
@@ -144,14 +160,15 @@ function initData (vm: Component) {
         vm
       )
     } else if (!isReserved(key)) {
+      // 设置属性的get、set函数方便之后劫持
       proxy(vm, `_data`, key)
     }
   }
-  // observe data
-  observe(data, true /* asRootData */)
+  // observe data，劫持属性get、set
+  observe(data, true /* asRootData */ )
 }
 
-export function getData (data: Function, vm: Component): any {
+export function getData(data: Function, vm: Component): any {
   // #7573 disable dep collection when invoking data getters
   pushTarget()
   try {
@@ -164,9 +181,11 @@ export function getData (data: Function, vm: Component): any {
   }
 }
 
-const computedWatcherOptions = { lazy: true }
+const computedWatcherOptions = {
+  lazy: true
+}
 
-function initComputed (vm: Component, computed: Object) {
+function initComputed(vm: Component, computed: Object) {
   // $flow-disable-line
   const watchers = vm._computedWatchers = Object.create(null)
   // computed properties are just getters during SSR
@@ -207,27 +226,27 @@ function initComputed (vm: Component, computed: Object) {
   }
 }
 
-export function defineComputed (
+export function defineComputed(
   target: any,
   key: string,
   userDef: Object | Function
 ) {
   const shouldCache = !isServerRendering()
   if (typeof userDef === 'function') {
-    sharedPropertyDefinition.get = shouldCache
-      ? createComputedGetter(key)
-      : createGetterInvoker(userDef)
+    sharedPropertyDefinition.get = shouldCache ?
+      createComputedGetter(key) :
+      createGetterInvoker(userDef)
     sharedPropertyDefinition.set = noop
   } else {
-    sharedPropertyDefinition.get = userDef.get
-      ? shouldCache && userDef.cache !== false
-        ? createComputedGetter(key)
-        : createGetterInvoker(userDef.get)
-      : noop
+    sharedPropertyDefinition.get = userDef.get ?
+      shouldCache && userDef.cache !== false ?
+      createComputedGetter(key) :
+      createGetterInvoker(userDef.get) :
+      noop
     sharedPropertyDefinition.set = userDef.set || noop
   }
   if (process.env.NODE_ENV !== 'production' &&
-      sharedPropertyDefinition.set === noop) {
+    sharedPropertyDefinition.set === noop) {
     sharedPropertyDefinition.set = function () {
       warn(
         `Computed property "${key}" was assigned to but it has no setter.`,
@@ -238,8 +257,8 @@ export function defineComputed (
   Object.defineProperty(target, key, sharedPropertyDefinition)
 }
 
-function createComputedGetter (key) {
-  return function computedGetter () {
+function createComputedGetter(key) {
+  return function computedGetter() {
     const watcher = this._computedWatchers && this._computedWatchers[key]
     if (watcher) {
       if (watcher.dirty) {
@@ -254,12 +273,12 @@ function createComputedGetter (key) {
 }
 
 function createGetterInvoker(fn) {
-  return function computedGetter () {
+  return function computedGetter() {
     return fn.call(this, this)
   }
 }
 
-function initMethods (vm: Component, methods: Object) {
+function initMethods(vm: Component, methods: Object) {
   const props = vm.$options.props
   for (const key in methods) {
     if (process.env.NODE_ENV !== 'production') {
@@ -287,7 +306,7 @@ function initMethods (vm: Component, methods: Object) {
   }
 }
 
-function initWatch (vm: Component, watch: Object) {
+function initWatch(vm: Component, watch: Object) {
   for (const key in watch) {
     const handler = watch[key]
     if (Array.isArray(handler)) {
@@ -300,11 +319,11 @@ function initWatch (vm: Component, watch: Object) {
   }
 }
 
-function createWatcher (
+function createWatcher(
   vm: Component,
   expOrFn: string | Function,
   handler: any,
-  options?: Object
+  options ? : Object
 ) {
   if (isPlainObject(handler)) {
     options = handler
@@ -316,14 +335,18 @@ function createWatcher (
   return vm.$watch(expOrFn, handler, options)
 }
 
-export function stateMixin (Vue: Class<Component>) {
+export function stateMixin(Vue: Class < Component > ) {
   // flow somehow has problems with directly declared definition object
   // when using Object.defineProperty, so we have to procedurally build up
   // the object here.
   const dataDef = {}
-  dataDef.get = function () { return this._data }
+  dataDef.get = function () {
+    return this._data
+  }
   const propsDef = {}
-  propsDef.get = function () { return this._props }
+  propsDef.get = function () {
+    return this._props
+  }
   if (process.env.NODE_ENV !== 'production') {
     dataDef.set = function () {
       warn(
@@ -342,26 +365,31 @@ export function stateMixin (Vue: Class<Component>) {
   Vue.prototype.$set = set
   Vue.prototype.$delete = del
 
+  // Vue暴露出的$watch
   Vue.prototype.$watch = function (
     expOrFn: string | Function,
     cb: any,
-    options?: Object
+    options ? : Object
   ): Function {
     const vm: Component = this
+
     if (isPlainObject(cb)) {
       return createWatcher(vm, expOrFn, cb, options)
     }
     options = options || {}
     options.user = true
+    // 添加观察者
     const watcher = new Watcher(vm, expOrFn, cb, options)
+    // 立即执行的观察者
     if (options.immediate) {
       try {
+        // 直接执行回调，因为第一次执行所以没有oldValue
         cb.call(vm, watcher.value)
       } catch (error) {
         handleError(error, vm, `callback for immediate watcher "${watcher.expression}"`)
       }
     }
-    return function unwatchFn () {
+    return function unwatchFn() {
       watcher.teardown()
     }
   }

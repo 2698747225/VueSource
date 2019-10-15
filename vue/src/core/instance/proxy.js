@@ -1,7 +1,11 @@
 /* not type checking this file because flow doesn't play well with Proxy */
 
 import config from 'core/config'
-import { warn, makeMap, isNative } from '../util/index'
+import {
+  warn,
+  makeMap,
+  isNative
+} from '../util/index'
 
 let initProxy
 
@@ -40,7 +44,7 @@ if (process.env.NODE_ENV !== 'production') {
   if (hasProxy) {
     const isBuiltInModifier = makeMap('stop,prevent,self,ctrl,shift,alt,meta,exact')
     config.keyCodes = new Proxy(config.keyCodes, {
-      set (target, key, value) {
+      set(target, key, value) {
         if (isBuiltInModifier(key)) {
           warn(`Avoid overwriting built-in modifier in config.keyCodes: .${key}`)
           return false
@@ -53,7 +57,8 @@ if (process.env.NODE_ENV !== 'production') {
   }
 
   const hasHandler = {
-    has (target, key) {
+    // 拦截的in操作
+    has(target, key) {
       const has = key in target
       const isAllowed = allowedGlobals(key) ||
         (typeof key === 'string' && key.charAt(0) === '_' && !(key in target.$data))
@@ -66,7 +71,8 @@ if (process.env.NODE_ENV !== 'production') {
   }
 
   const getHandler = {
-    get (target, key) {
+    // 属性访问
+    get(target, key) {
       if (typeof key === 'string' && !(key in target)) {
         if (key in target.$data) warnReservedPrefix(target, key)
         else warnNonPresent(target, key)
@@ -75,13 +81,15 @@ if (process.env.NODE_ENV !== 'production') {
     }
   }
 
-  initProxy = function initProxy (vm) {
+  // 渲染函数执行_render执行生成vnode树时，它的指针指向代理对象_renderProxy
+  initProxy = function initProxy(vm) {
     if (hasProxy) {
       // determine which proxy handler to use
       const options = vm.$options
-      const handlers = options.render && options.render._withStripped
-        ? getHandler
-        : hasHandler
+      const handlers = options.render && options.render._withStripped ?
+        getHandler :
+        hasHandler
+      // 这个代理对象只是为了拦截属性访问，发出警告
       vm._renderProxy = new Proxy(vm, handlers)
     } else {
       vm._renderProxy = vm
@@ -89,4 +97,6 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
-export { initProxy }
+export {
+  initProxy
+}
