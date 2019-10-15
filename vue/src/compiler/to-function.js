@@ -1,30 +1,43 @@
 /* @flow */
 
-import { noop, extend } from 'shared/util'
-import { warn as baseWarn, tip } from 'core/util/debug'
-import { generateCodeFrame } from './codeframe'
+import {
+  noop,
+  extend
+} from 'shared/util'
+import {
+  warn as baseWarn,
+  tip
+} from 'core/util/debug'
+import {
+  generateCodeFrame
+} from './codeframe'
 
 type CompiledFunctionResult = {
   render: Function;
-  staticRenderFns: Array<Function>;
+  staticRenderFns: Array < Function > ;
 };
 
-function createFunction (code, errors) {
+function createFunction(code, errors) {
   try {
     return new Function(code)
   } catch (err) {
-    errors.push({ err, code })
+    errors.push({
+      err,
+      code
+    })
     return noop
   }
 }
 
-export function createCompileToFunctionFn (compile: Function): Function {
+export function createCompileToFunctionFn(compile: Function): Function {
   const cache = Object.create(null)
-
-  return function compileToFunctions (
+  /**
+   * 这里是vue暴露出去的compile方法
+   */
+  return function compileToFunctions(
     template: string,
-    options?: CompilerOptions,
-    vm?: Component
+    options ? : CompilerOptions,
+    vm ? : Component
   ): CompiledFunctionResult {
     options = extend({}, options)
     const warn = options.warn || baseWarn
@@ -49,14 +62,16 @@ export function createCompileToFunctionFn (compile: Function): Function {
     }
 
     // check cache
-    const key = options.delimiters
-      ? String(options.delimiters) + template
-      : template
+    const key = options.delimiters ?
+      String(options.delimiters) + template :
+      template
+    // 缓存
     if (cache[key]) {
       return cache[key]
     }
 
     // compile
+    // 调用compile方法合并编译
     const compiled = compile(template, options)
 
     // check compilation errors/tips
@@ -90,6 +105,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
     // turn code into functions
     const res = {}
     const fnGenErrors = []
+    // 把compiled.render字符串包含到方法中
     res.render = createFunction(compiled.render, fnGenErrors)
     res.staticRenderFns = compiled.staticRenderFns.map(code => {
       return createFunction(code, fnGenErrors)
@@ -103,12 +119,20 @@ export function createCompileToFunctionFn (compile: Function): Function {
       if ((!compiled.errors || !compiled.errors.length) && fnGenErrors.length) {
         warn(
           `Failed to generate render function:\n\n` +
-          fnGenErrors.map(({ err, code }) => `${err.toString()} in\n\n${code}\n`).join('\n'),
+          fnGenErrors.map(({
+            err,
+            code
+          }) => `${err.toString()} in\n\n${code}\n`).join('\n'),
           vm
         )
       }
     }
-
+    /**
+     * 返回对象{
+     *            render:res.render,
+     *            staticRenderFns:res.staticRenderFns
+     *        }
+     */
     return (cache[key] = res)
   }
 }
