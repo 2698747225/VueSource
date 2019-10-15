@@ -1,12 +1,22 @@
 /* @flow */
 
 import config from '../config'
-import { warn } from './debug'
-import { inBrowser, inWeex } from './env'
-import { isPromise } from 'shared/util'
-import { pushTarget, popTarget } from '../observer/dep'
+import {
+  warn
+} from './debug'
+import {
+  inBrowser,
+  inWeex
+} from './env'
+import {
+  isPromise
+} from 'shared/util'
+import {
+  pushTarget,
+  popTarget
+} from '../observer/dep'
 
-export function handleError (err: Error, vm: any, info: string) {
+export function handleError(err: Error, vm: any, info: string) {
   // Deactivate deps tracking while processing error handler to avoid possible infinite rendering.
   // See: https://github.com/vuejs/vuex/issues/1505
   pushTarget()
@@ -32,17 +42,19 @@ export function handleError (err: Error, vm: any, info: string) {
     popTarget()
   }
 }
-
-export function invokeWithErrorHandling (
-  handler: Function,
-  context: any,
-  args: null | any[],
-  vm: any,
-  info: string
+// emit执行事件处理函数
+export function invokeWithErrorHandling(
+  handler: Function, // 事件
+  context: any, // 组件实例
+  args: null | any[], // 参数(事件名)
+  vm: any, // 组件实例
+  info: string // 提示信息
 ) {
   let res
   try {
+    // 执行事件函数
     res = args ? handler.apply(context, args) : handler.call(context)
+    // _isVue属性只会绑定到组件对象上，promise对象直接抛错
     if (res && !res._isVue && isPromise(res) && !res._handled) {
       res.catch(e => handleError(e, vm, info + ` (Promise/async)`))
       // issue #9511
@@ -50,12 +62,13 @@ export function invokeWithErrorHandling (
       res._handled = true
     }
   } catch (e) {
+    // 错误处理
     handleError(e, vm, info)
   }
   return res
 }
 
-function globalHandleError (err, vm, info) {
+function globalHandleError(err, vm, info) {
   if (config.errorHandler) {
     try {
       return config.errorHandler.call(null, err, vm, info)
@@ -70,7 +83,7 @@ function globalHandleError (err, vm, info) {
   logError(err, vm, info)
 }
 
-function logError (err, vm, info) {
+function logError(err, vm, info) {
   if (process.env.NODE_ENV !== 'production') {
     warn(`Error in ${info}: "${err.toString()}"`, vm)
   }
