@@ -8,15 +8,28 @@ import {
   defineReactive
 } from '../util/index'
 
-import { createElement } from '../vdom/create-element'
-import { installRenderHelpers } from './render-helpers/index'
-import { resolveSlots } from './render-helpers/resolve-slots'
-import { normalizeScopedSlots } from '../vdom/helpers/normalize-scoped-slots'
-import VNode, { createEmptyVNode } from '../vdom/vnode'
+import {
+  createElement
+} from '../vdom/create-element'
+import {
+  installRenderHelpers
+} from './render-helpers/index'
+import {
+  resolveSlots
+} from './render-helpers/resolve-slots'
+import {
+  normalizeScopedSlots
+} from '../vdom/helpers/normalize-scoped-slots'
+import VNode, {
+  createEmptyVNode
+} from '../vdom/vnode'
 
-import { isUpdatingChildComponent } from './lifecycle'
+import {
+  isUpdatingChildComponent
+} from './lifecycle'
 
-export function initRender (vm: Component) {
+// 初始化渲染
+export function initRender(vm: Component) {
   vm._vnode = null // the root of the child tree
   vm._staticTrees = null // v-once cached trees
   const options = vm.$options
@@ -31,13 +44,14 @@ export function initRender (vm: Component) {
   vm._c = (a, b, c, d) => createElement(vm, a, b, c, d, false)
   // normalization is always applied for the public version, used in
   // user-written render functions.
+  // 创建虚拟dom节点
   vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true)
 
   // $attrs & $listeners are exposed for easier HOC creation.
   // they need to be reactive so that HOCs using them are always updated
   const parentData = parentVnode && parentVnode.data
 
-  /* istanbul ignore else */
+  /* istanbul ignore else */ // 给$attrs、$listeners添加响应式数据
   if (process.env.NODE_ENV !== 'production') {
     defineReactive(vm, '$attrs', parentData && parentData.attrs || emptyObject, () => {
       !isUpdatingChildComponent && warn(`$attrs is readonly.`, vm)
@@ -54,23 +68,27 @@ export function initRender (vm: Component) {
 export let currentRenderingInstance: Component | null = null
 
 // for testing only
-export function setCurrentRenderingInstance (vm: Component) {
+export function setCurrentRenderingInstance(vm: Component) {
   currentRenderingInstance = vm
 }
 
-export function renderMixin (Vue: Class<Component>) {
+export function renderMixin(Vue: Class < Component > ) {
   // install runtime convenience helpers
   installRenderHelpers(Vue.prototype)
 
   Vue.prototype.$nextTick = function (fn: Function) {
     return nextTick(fn, this)
   }
-
+  // 更新视图用到的渲染函数，用来生成Vnode
   Vue.prototype._render = function (): VNode {
     const vm: Component = this
-    const { render, _parentVnode } = vm.$options
+    const {
+      render, //渲染函数
+      _parentVnode //父节点
+    } = vm.$options
 
     if (_parentVnode) {
+      // 获取插槽
       vm.$scopedSlots = normalizeScopedSlots(
         _parentVnode.data.scopedSlots,
         vm.$slots,
@@ -88,8 +106,17 @@ export function renderMixin (Vue: Class<Component>) {
       // separately from one another. Nested component's render fns are called
       // when parent component is patched.
       currentRenderingInstance = vm
+      /**
+       * 在进行组件模板生成Vnode树时，这个render函数相当于 
+  *       (function anonymous(
+            ) {
+                with(this){return _c('div',{attrs:{"id":"app"}},[_c('input',{directives:[{name:"info",rawName:"v-info"},{name:"data",rawName:"v-data"}],attrs:{"type":"text"}}),_v(" "),_m(0),_v(" "),_c('div',[_v("\n        "+_s(message)+"\n    ")])])}
+            })
+       *  */
+      // 生成vnode，这里的_renderProxy就是vm实例的代理对象（_render核心）
       vnode = render.call(vm._renderProxy, vm.$createElement)
     } catch (e) {
+      // 渲染错误
       handleError(e, vm, `render`)
       // return error render result,
       // or previous vnode to prevent render error causing blank component
@@ -120,6 +147,7 @@ export function renderMixin (Vue: Class<Component>) {
           vm
         )
       }
+      // 函数错误返回空vnode
       vnode = createEmptyVNode()
     }
     // set parent
