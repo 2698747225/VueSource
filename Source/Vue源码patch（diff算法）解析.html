@@ -1,7 +1,10 @@
 <script>
     /**
         从_update更新节点开始，会对vnode组进行patch。patch阶段会维护两条集合，vnodes和oldVnodes，在没有oldVnodes集合的情况下，直接执行addVnodes(内部是循环遍历调用createElm)
-        创建dom元素。
+        创建dom元素。createElm中是对节点类型进行判断，生成dom，插入父dom中（包含子dom生成）。如果存在oldVnodes的情况下，若新老节点key、tag、data不同，则直接根据vnode创建dom，
+        如果新老节点key等相同，会执行patchVnode方法对两个节点进行修正。在patchVnode中如果是文本节点，则直接修改dom节点的文本，如果包含子节点，则根据去维护子节点相关，调用
+        updateChildren方法，这个方法中会去查找newVnode、oldVnode中的sameVnode节点，对这些节点执行patchVnode方法。整体是一个递归调用的过程。第一次进行patch方法是一个单个vnode节点
+        之后在patchVnode过程中逐渐递归更新所有的子元素
     */
     /**    
      * createElm:
