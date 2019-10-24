@@ -3,6 +3,10 @@
      * nextTick的大体逻辑，关键点是nextTick是异步去执行callback队列，有个pending变量保证在执行callbacks队列前，只会有一次执行，相当于节流的概念，
      * setTimeout方法是简化了调用栈执行的方法。实际上nextTick的作用在于清空回调函数栈执行回调函数，并保证在一个调用栈执行时间段只会执行一次清空操作
      * 在一个setTimeout时间中只会执行并清空一次callbacks数组。
+     * 经过测试：
+     * 源码中优先使用microtask作为回调的队列，第一次执行是在同步代码执行完后，第一个macrotask事件执行完，去执行queue队列中的watcher.run方法。之后每
+     * 个异步事件作为一个事件循环都会触发对应的nextTick（一般由watcher.notify去触发注册），如果异步事件的回调中调用了$nextTick，这个callback就会作为
+     * microtask队列的末尾插入，最后执行。
      */
     var pending = false;
     var callbacks = [];
@@ -29,7 +33,7 @@
      * 从数据变化到对应的watcher执行update方法，到执行queueWatcher方法，queueWatcher方法的作用是收集watcher到一个queue数组中，同时把遍历执行queue中回调函数
      * 的函数作为callback传入nextTick中，在源码中并未找到queue清空的地方，但事实上初始化及每次数据变化完成后都会对queue进行清空。waiting的作用在于防止多次执行
      * 传入nextTick中的回调，因为即使nextTick中有pending变量，但这个变量只对执行callbacks函数的次数做限制。也就说多次执行nextTick方法会多次往callbacks数组中
-     * 推入回调函数导致执行多次。
+     * 推入回调函数导致执行多次（$nextTick也会注册callback）。
      */
     var queue = [];
     var waiting = false;

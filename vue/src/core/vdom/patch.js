@@ -556,7 +556,7 @@ export function createPatchFunction(backend) {
     }
   }
 
-  // 修改
+  // 修改，比对修正dom节点，只会针对vnode含有相同key、tag、data的标签进行比对
   function patchVnode(
     oldVnode,
     vnode,
@@ -828,6 +828,7 @@ export function createPatchFunction(backend) {
           }
           // either not server-rendered, or hydration failed.
           // create an empty node and replace it
+          // 创建了一个空的节点
           oldVnode = emptyNodeAt(oldVnode)
         }
 

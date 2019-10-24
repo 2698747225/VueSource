@@ -203,7 +203,7 @@ export default class Watcher {
     } else if (this.sync) {
       this.run()
     } else {
-      // 后面再看这个方法
+      // 保证watcher触发的效率，一个tick下最多只会触发同一个watcher一次
       queueWatcher(this)
     }
   }

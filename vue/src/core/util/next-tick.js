@@ -1,19 +1,31 @@
 /* @flow */
 /* globals MutationObserver */
 
-import { noop } from 'shared/util'
-import { handleError } from './error'
-import { isIE, isIOS, isNative } from './env'
+import {
+  noop
+} from 'shared/util'
+import {
+  handleError
+} from './error'
+import {
+  isIE,
+  isIOS,
+  isNative
+} from './env'
 
 export let isUsingMicroTask = false
 
 const callbacks = []
+// pending的作用是在一个调用栈执行过程中不会再次执行回调函数栈和清空回调函数栈
 let pending = false
 
-function flushCallbacks () {
+function flushCallbacks() {
   pending = false
+  // 拷贝回调函数栈 
   const copies = callbacks.slice(0)
+  // 清空栈
   callbacks.length = 0
+  // 循环执行所有callback
   for (let i = 0; i < copies.length; i++) {
     copies[i]()
   }
@@ -39,6 +51,7 @@ let timerFunc
 // completely stops working after triggering a few times... so, if native
 // Promise is available, we will use it:
 /* istanbul ignore next, $flow-disable-line */
+// 微任务延迟（通过promise执行），默认
 if (typeof Promise !== 'undefined' && isNative(Promise)) {
   const p = Promise.resolve()
   timerFunc = () => {
@@ -51,11 +64,13 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
     if (isIOS) setTimeout(noop)
   }
   isUsingMicroTask = true
-} else if (!isIE && typeof MutationObserver !== 'undefined' && (
-  isNative(MutationObserver) ||
-  // PhantomJS and iOS 7.x
-  MutationObserver.toString() === '[object MutationObserverConstructor]'
-)) {
+}
+// dom元素变化观察对象，返回一个observe
+else if (!isIE && typeof MutationObserver !== 'undefined' && (
+    isNative(MutationObserver) ||
+    // PhantomJS and iOS 7.x
+    MutationObserver.toString() === '[object MutationObserverConstructor]'
+  )) {
   // Use MutationObserver where native Promise is not available,
   // e.g. PhantomJS, iOS7, Android 4.4
   // (#6466 MutationObserver is unreliable in IE11)
@@ -70,7 +85,9 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
     textNode.data = String(counter)
   }
   isUsingMicroTask = true
-} else if (typeof setImmediate !== 'undefined' && isNative(setImmediate)) {
+}
+// ie浏览器独有，对于v-on事件回调函数强制使用macrotask
+else if (typeof setImmediate !== 'undefined' && isNative(setImmediate)) {
   // Fallback to setImmediate.
   // Techinically it leverages the (macro) task queue,
   // but it is still a better choice than setTimeout.
@@ -83,8 +100,11 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
     setTimeout(flushCallbacks, 0)
   }
 }
-
-export function nextTick (cb?: Function, ctx?: Object) {
+/**
+ * callbacks收集回调函数，并根据pending状态微延迟执行回调栈。$nextTick也是调用这个函数，原来是在数据变化后会触发响应式数据变化执行对应的watcher函数，同时watcher
+ * 为了防止多次执行callback而使用了has以及waiting字段防止重复触发，同时把flushSchedulerQueue方法传入nextTick作为callback
+ */
+export function nextTick(cb ? : Function, ctx ? : Object) {
   let _resolve
   callbacks.push(() => {
     if (cb) {

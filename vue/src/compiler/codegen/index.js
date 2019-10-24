@@ -59,29 +59,42 @@ export function generate(
   options: CompilerOptions
 ): CodegenResult {
   const state = new CodegenState(options)
+  // 传入ast，否则返回div标签
   const code = ast ? genElement(ast, state) : '_c("div")'
   return {
+    // template类型引用的vm.$options.render
     render: `with(this){return ${code}}`,
     staticRenderFns: state.staticRenderFns
   }
 }
-
+/** static:_m(0,true)
+ *  v-if with v-once should generate code like (a)?_m(0):_m(1)
+ *  text:_v('text')
+ *  v-for:_l()
+ *  v-if:_e()
+ */
 export function genElement(el: ASTElement, state: CodegenState): string {
   if (el.parent) {
     el.pre = el.pre || el.parent.pre
   }
 
+  // 是静态根节点且未处理过，静态根节点标记是在optimize阶段
   if (el.staticRoot && !el.staticProcessed) {
     return genStatic(el, state)
   } else if (el.once && !el.onceProcessed) {
+    // v-once指令
     return genOnce(el, state)
   } else if (el.for && !el.forProcessed) {
+    // v-for
     return genFor(el, state)
   } else if (el.if && !el.ifProcessed) {
+    //v-if
     return genIf(el, state)
   } else if (el.tag === 'template' && !el.slotTarget && !state.pre) {
+    // template且不包含slot属性
     return genChildren(el, state) || 'void 0'
   } else if (el.tag === 'slot') {
+    // slot节点
     return genSlot(el, state)
   } else {
     // component or element
@@ -110,6 +123,7 @@ export function genElement(el: ASTElement, state: CodegenState): string {
 }
 
 // hoist static sub-trees out
+// 静态节点处理
 function genStatic(el: ASTElement, state: CodegenState): string {
   el.staticProcessed = true
   // Some elements (templates) need to behave differently inside of a v-pre
@@ -121,6 +135,7 @@ function genStatic(el: ASTElement, state: CodegenState): string {
   }
   state.staticRenderFns.push(`with(this){return ${genElement(el, state)}}`)
   state.pre = originalPreState
+  //返回虚拟dom渲染需要的参数格式
   return `_m(${
     state.staticRenderFns.length - 1
   }${
@@ -131,6 +146,7 @@ function genStatic(el: ASTElement, state: CodegenState): string {
 // v-once
 function genOnce(el: ASTElement, state: CodegenState): string {
   el.onceProcessed = true
+  // 包含v-if指令
   if (el.if && !el.ifProcessed) {
     return genIf(el, state)
   } else if (el.staticInFor) {
@@ -156,6 +172,7 @@ function genOnce(el: ASTElement, state: CodegenState): string {
   }
 }
 
+//判断标签是否含有if属性 解析 if指令中的参数 并且返回 虚拟dom需要的参数js渲染函数
 export function genIf(
   el: any,
   state: CodegenState,
@@ -166,6 +183,7 @@ export function genIf(
   return genIfConditions(el.ifConditions.slice(), state, altGen, altEmpty)
 }
 
+//判断标签是否含有if属性 解析 if指令中的参数 并且返回 虚拟dom需要的参数js渲染函数
 function genIfConditions(
   conditions: ASTIfConditions,
   state: CodegenState,
@@ -224,6 +242,7 @@ export function genFor(
   }
 
   el.forProcessed = true // avoid recursion
+  //递归回调
   return `${altHelper || '_l'}((${exp}),` +
     `function(${alias}${iterator1}${iterator2}){` +
     `return ${(altGen || genElement)(el, state)}` +
@@ -539,12 +558,16 @@ function needsNormalization(el: ASTElement): boolean {
   return el.for !== undefined || el.tag === 'template' || el.tag === 'slot'
 }
 
+// 根据nodeType转换为不同的字符
 function genNode(node: ASTNode, state: CodegenState): string {
+  // 组件类型
   if (node.type === 1) {
     return genElement(node, state)
   } else if (node.type === 3 && node.isComment) {
+    // 纯文本类型
     return genComment(node)
   } else {
+    // 包含{{}}文本
     return genText(node)
   }
 }

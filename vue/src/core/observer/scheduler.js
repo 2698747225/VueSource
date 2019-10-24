@@ -2,7 +2,10 @@
 
 import type Watcher from './watcher'
 import config from '../config'
-import { callHook, activateChildComponent } from '../instance/lifecycle'
+import {
+  callHook,
+  activateChildComponent
+} from '../instance/lifecycle'
 
 import {
   warn,
@@ -14,10 +17,14 @@ import {
 
 export const MAX_UPDATE_COUNT = 100
 
-const queue: Array<Watcher> = []
-const activatedChildren: Array<Component> = []
-let has: { [key: number]: ?true } = {}
-let circular: { [key: number]: number } = {}
+const queue: Array < Watcher > = []
+const activatedChildren: Array < Component > = []
+let has: {
+  [key: number]: ? true
+} = {}
+let circular: {
+  [key: number]: number
+} = {}
 let waiting = false
 let flushing = false
 let index = 0
@@ -25,7 +32,7 @@ let index = 0
 /**
  * Reset the scheduler's state.
  */
-function resetSchedulerState () {
+function resetSchedulerState() {
   index = queue.length = activatedChildren.length = 0
   has = {}
   if (process.env.NODE_ENV !== 'production') {
@@ -68,7 +75,8 @@ if (inBrowser && !isIE) {
 /**
  * Flush both queues and run the watchers.
  */
-function flushSchedulerQueue () {
+// 循环遍历queue收集的watcher，并执行update方法
+function flushSchedulerQueue() {
   currentFlushTimestamp = getNow()
   flushing = true
   let watcher, id
@@ -81,16 +89,19 @@ function flushSchedulerQueue () {
   //    user watchers are created before the render watcher)
   // 3. If a component is destroyed during a parent component's watcher run,
   //    its watchers can be skipped.
+  // 对watcher进行排序，按照id从小到大排序，保证watcher执行能够从父级渲染到子级渲染的流程
   queue.sort((a, b) => a.id - b.id)
 
   // do not cache length because more watchers might be pushed
   // as we run existing watchers
+  // queue数组循环执行watcher的run方法
   for (index = 0; index < queue.length; index++) {
     watcher = queue[index]
     if (watcher.before) {
       watcher.before()
     }
     id = watcher.id
+    // 清空
     has[id] = null
     watcher.run()
     // in dev build, check and stop circular updates.
@@ -99,9 +110,9 @@ function flushSchedulerQueue () {
       if (circular[id] > MAX_UPDATE_COUNT) {
         warn(
           'You may have an infinite update loop ' + (
-            watcher.user
-              ? `in watcher with expression "${watcher.expression}"`
-              : `in a component render function.`
+            watcher.user ?
+            `in watcher with expression "${watcher.expression}"` :
+            `in a component render function.`
           ),
           watcher.vm
         )
@@ -114,10 +125,13 @@ function flushSchedulerQueue () {
   const activatedQueue = activatedChildren.slice()
   const updatedQueue = queue.slice()
 
+  // 清空queue数组
   resetSchedulerState()
 
   // call component updated and activated hooks
+  // 触发组件更新钩子
   callActivatedHooks(activatedQueue)
+  // 更新钩子函数
   callUpdatedHooks(updatedQueue)
 
   // devtool hook
@@ -127,7 +141,7 @@ function flushSchedulerQueue () {
   }
 }
 
-function callUpdatedHooks (queue) {
+function callUpdatedHooks(queue) {
   let i = queue.length
   while (i--) {
     const watcher = queue[i]
@@ -142,17 +156,17 @@ function callUpdatedHooks (queue) {
  * Queue a kept-alive component that was activated during patch.
  * The queue will be processed after the entire tree has been patched.
  */
-export function queueActivatedComponent (vm: Component) {
+export function queueActivatedComponent(vm: Component) {
   // setting _inactive to false here so that a render function can
   // rely on checking whether it's in an inactive tree (e.g. router-view)
   vm._inactive = false
   activatedChildren.push(vm)
 }
 
-function callActivatedHooks (queue) {
+function callActivatedHooks(queue) {
   for (let i = 0; i < queue.length; i++) {
     queue[i]._inactive = true
-    activateChildComponent(queue[i], true /* true */)
+    activateChildComponent(queue[i], true /* true */ )
   }
 }
 
@@ -161,10 +175,12 @@ function callActivatedHooks (queue) {
  * Jobs with duplicate IDs will be skipped unless it's
  * pushed when the queue is being flushed.
  */
-export function queueWatcher (watcher: Watcher) {
+// queue数组收集watcher，针对同一个watcher只会收集一次，并调用nextTick微延迟执行回调队列
+export function queueWatcher(watcher: Watcher) {
   const id = watcher.id
   if (has[id] == null) {
     has[id] = true
+    // watcher推入栈中
     if (!flushing) {
       queue.push(watcher)
     } else {
@@ -177,6 +193,7 @@ export function queueWatcher (watcher: Watcher) {
       queue.splice(i + 1, 0, watcher)
     }
     // queue the flush
+    // 微调用时间内防止多次执行回调函数
     if (!waiting) {
       waiting = true
 
