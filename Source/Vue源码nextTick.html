@@ -1,0 +1,58 @@
+<script>
+    /**
+     * nextTick的大体逻辑，关键点是nextTick是异步去执行callback队列，有个pending变量保证在执行callbacks队列前，只会有一次执行，相当于节流的概念，
+     * setTimeout方法是简化了调用栈执行的方法。实际上nextTick的作用在于清空回调函数栈执行回调函数，并保证在一个调用栈执行时间段只会执行一次清空操作
+     * 在一个setTimeout时间中只会执行并清空一次callbacks数组。
+     */
+    var pending = false;
+    var callbacks = [];
+
+    function nextTick(cb) {
+        callbacks.push(cb);
+        if (!pending) {
+            pending = true;
+            setTimeout(flushCallback)
+        }
+    }
+
+    // 清空回调函数栈
+    function flushCallback() {
+        pending = false;
+        const copyArr = [...callbacks];
+        callbacks.length = 0;
+        for (const cb of copyArr) {
+            cb();
+        }
+    }
+
+    /** 
+     * 从数据变化到对应的watcher执行update方法，到执行queueWatcher方法，queueWatcher方法的作用是收集watcher到一个queue数组中，同时把遍历执行queue中回调函数
+     * 的函数作为callback传入nextTick中，在源码中并未找到queue清空的地方，但事实上初始化及每次数据变化完成后都会对queue进行清空。waiting的作用在于防止多次执行
+     * 传入nextTick中的回调，因为即使nextTick中有pending变量，但这个变量只对执行callbacks函数的次数做限制。也就说多次执行nextTick方法会多次往callbacks数组中
+     * 推入回调函数导致执行多次。
+     */
+    var queue = [];
+    var waiting = false;
+    var has = {};
+
+    function queueWatcher(watcher) {
+        const id = watcher.id;
+        if (!has[id]) {
+            has[id] = true;
+            queue.push(watcher);
+        }
+        if (!waiting) {
+            waiting = true;
+            nextTick(flushSchedulerQueue);
+        }
+    }
+
+    function flushSchedulerQueue() {
+        for (const watcher of queue) {
+            const id = watcher.id;
+            has[id] = null;
+            watcher.run();
+        }
+        waiting = false;
+    }
+</script>
