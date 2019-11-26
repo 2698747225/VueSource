@@ -113,6 +113,7 @@ export function createPatchFunction(backend) {
     return remove
   }
 
+  // 原生的dom移除操作
   function removeNode(el) {
     const parent = nodeOps.parentNode(el)
     // element may have already been removed due to v-html / v-text
@@ -159,7 +160,7 @@ export function createPatchFunction(backend) {
     }
 
     vnode.isRootInsert = !nested // for transition enter check
-    // 判断这个vnode是否实例化过
+    // 判断这个vnode是否实例化过，顺带进行实例化操作。若已被实例化过则返回undefined，vnode->dom的第一步
     if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
       return
     }
@@ -209,7 +210,7 @@ export function createPatchFunction(backend) {
           insert(parentElm, vnode.elm, refElm)
         }
       } else {
-        // 创建子节点
+        // 创建子节点（会递归调用createElm）
         createChildren(vnode, children, insertedVnodeQueue)
         if (isDef(data)) {
           invokeCreateHooks(vnode, insertedVnodeQueue)
@@ -232,19 +233,25 @@ export function createPatchFunction(backend) {
 
   function createComponent(vnode, insertedVnodeQueue, parentElm, refElm) {
     let i = vnode.data
+    // 只有组件类型会存在data参数
     if (isDef(i)) {
+      // 已经实例化过，并且是keep-alive组件
       const isReactivated = isDef(vnode.componentInstance) && i.keepAlive
       if (isDef(i = i.hook) && isDef(i = i.init)) {
+        // 调用创建组件时挂载的init钩子
         i(vnode, false /* hydrating */ )
       }
       // after calling the init hook, if the vnode is a child component
       // it should've created a child instance and mounted it. the child
       // component also has set the placeholder vnode's elm.
       // in that case we can just return the element and be done.
+      // 已实例化过
       if (isDef(vnode.componentInstance)) {
         initComponent(vnode, insertedVnodeQueue)
         insert(parentElm, vnode.elm, refElm)
+        // keep-alive组件
         if (isTrue(isReactivated)) {
+          // 重新激活组件
           reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm)
         }
         return true
@@ -257,6 +264,7 @@ export function createPatchFunction(backend) {
       insertedVnodeQueue.push.apply(insertedVnodeQueue, vnode.data.pendingInsert)
       vnode.data.pendingInsert = null
     }
+    // 从实体中拿出真实dom节点
     vnode.elm = vnode.componentInstance.$el
     if (isPatchable(vnode)) {
       invokeCreateHooks(vnode, insertedVnodeQueue)
@@ -278,6 +286,7 @@ export function createPatchFunction(backend) {
     // there doesn't seem to be a better way to do it.
     let innerNode = vnode
     while (innerNode.componentInstance) {
+      // _vnode
       innerNode = innerNode.componentInstance._vnode
       if (isDef(i = innerNode.data) && isDef(i = i.transition)) {
         for (i = 0; i < cbs.activate.length; ++i) {
@@ -372,9 +381,11 @@ export function createPatchFunction(backend) {
     let i, j
     const data = vnode.data
     if (isDef(data)) {
+      // 执行destroy
       if (isDef(i = data.hook) && isDef(i = i.destroy)) i(vnode)
       for (i = 0; i < cbs.destroy.length; ++i) cbs.destroy[i](vnode)
     }
+    // 递归子组件，所有的子组件也触发destroy钩子
     if (isDef(i = vnode.children)) {
       for (j = 0; j < vnode.children.length; ++j) {
         invokeDestroyHook(vnode.children[j])
@@ -387,7 +398,9 @@ export function createPatchFunction(backend) {
       const ch = vnodes[startIdx]
       if (isDef(ch)) {
         if (isDef(ch.tag)) {
+          // dom移除
           removeAndInvokeRemoveHook(ch)
+          // 触发组件destroy钩子
           invokeDestroyHook(ch)
         } else { // Text node
           removeNode(ch.elm)
@@ -415,6 +428,7 @@ export function createPatchFunction(backend) {
       for (i = 0; i < cbs.remove.length; ++i) {
         cbs.remove[i](vnode, rm)
       }
+      // 执行hook中的remove钩子
       if (isDef(i = vnode.data.hook) && isDef(i = i.remove)) {
         i(vnode, rm)
       } else {
@@ -603,6 +617,7 @@ export function createPatchFunction(backend) {
 
     let i
     const data = vnode.data
+    // 执行vnode的prepatch钩子
     if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {
       i(oldVnode, vnode)
     }
@@ -650,6 +665,7 @@ export function createPatchFunction(backend) {
     }
   }
 
+  // 触发insert钩子
   function invokeInsertHook(vnode, queue, initial) {
     // delay insert hooks for component root nodes, invoke them after the
     // element is really inserted
@@ -878,6 +894,7 @@ export function createPatchFunction(backend) {
         }
 
         // destroy old node
+        // 遍历销毁（停用）所有子节点，并执行对应的钩子函数
         if (isDef(parentElm)) {
           removeVnodes(parentElm, [oldVnode], 0, 0)
         } else if (isDef(oldVnode.tag)) {
@@ -885,7 +902,7 @@ export function createPatchFunction(backend) {
         }
       }
     }
-
+    // 触发insert钩子
     invokeInsertHook(vnode, insertedVnodeQueue, isInitialPatch)
     return vnode.elm
   }

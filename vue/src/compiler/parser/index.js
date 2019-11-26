@@ -864,9 +864,11 @@ function processSlotOutlet(el) {
 
 function processComponent(el) {
   let binding
+  // 动态组件绑定component属性，值为组件名
   if ((binding = getBindingAttr(el, 'is'))) {
     el.component = binding
   }
+  //inlineTemplate标记
   if (getAndRemoveAttr(el, 'inline-template') != null) {
     el.inlineTemplate = true
   }

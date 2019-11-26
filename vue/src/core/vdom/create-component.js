@@ -39,8 +39,11 @@ import {
 } from 'weex/runtime/recycle-list/render-component-template'
 
 // inline hooks to be invoked on component VNodes during patch
+// 补丁期间在vnode上调用的钩子
 const componentVNodeHooks = {
+  // 初始化钩子
   init(vnode: VNodeWithData, hydrating: boolean): ? boolean {
+    //keep-alive组件，并且未销毁，组件vnode第一次初始化并没有componentInstance属性，但在执行完createComponentInstanceForVnode后绑定componentInstance
     if (
       vnode.componentInstance &&
       !vnode.componentInstance._isDestroyed &&
@@ -48,8 +51,10 @@ const componentVNodeHooks = {
     ) {
       // kept-alive components, treat as a patch
       const mountedNode: any = vnode // work around flow
+      // 当有keepAlive标志时，执行prepatch钩子（因此keep-alive重新初始化时不会执行mounted钩子）
       componentVNodeHooks.prepatch(mountedNode, mountedNode)
     } else {
+      // 生成组件实例
       const child = vnode.componentInstance = createComponentInstanceForVnode(
         vnode,
         activeInstance
@@ -58,6 +63,7 @@ const componentVNodeHooks = {
     }
   },
 
+  // 比较新旧节点，更新子节点
   prepatch(oldVnode: MountedComponentVNode, vnode: MountedComponentVNode) {
     const options = vnode.componentOptions
     const child = vnode.componentInstance = oldVnode.componentInstance
@@ -75,6 +81,7 @@ const componentVNodeHooks = {
       context,
       componentInstance
     } = vnode
+    // 判断组件未渲染过，标记未已渲染并执行钩子
     if (!componentInstance._isMounted) {
       componentInstance._isMounted = true
       callHook(componentInstance, 'mounted')
@@ -98,6 +105,7 @@ const componentVNodeHooks = {
       componentInstance
     } = vnode
     if (!componentInstance._isDestroyed) {
+      // 非keep-alive内组件直接执行destroy
       if (!vnode.data.keepAlive) {
         componentInstance.$destroy()
       } else {
@@ -171,6 +179,7 @@ export function createComponent(
   const propsData = extractPropsFromVNodeData(data, Ctor, tag)
 
   // functional component
+  // 函数式组件
   if (isTrue(Ctor.options.functional)) {
     return createFunctionalComponent(Ctor, propsData, data, context, children)
   }
@@ -182,6 +191,7 @@ export function createComponent(
   // so it gets processed during parent component patch.
   data.on = data.nativeOn
 
+  // abstract是抽象组件(内置组件)的标志
   if (isTrue(Ctor.options.abstract)) {
     // abstract components do not keep anything
     // other than props & listeners & slot
@@ -195,6 +205,7 @@ export function createComponent(
   }
 
   // install component management hooks onto the placeholder node
+  // 为vnode节点安装组件钩子{hook:any}
   installComponentHooks(data)
 
   // return a placeholder vnode
@@ -223,6 +234,7 @@ export function createComponent(
   return vnode
 }
 
+// 通过vnode节点生成组件实例
 export function createComponentInstanceForVnode(
   vnode: any, // we know it's MountedComponentVNode but flow doesn't
   parent: any, // activeInstance in lifecycle state
@@ -233,11 +245,13 @@ export function createComponentInstanceForVnode(
     parent
   }
   // check inline-template render functions
+  // 针对内联模板，渲染函数直接取内联模板的render
   const inlineTemplate = vnode.data.inlineTemplate
   if (isDef(inlineTemplate)) {
     options.render = inlineTemplate.render
     options.staticRenderFns = inlineTemplate.staticRenderFns
   }
+  // 执行VueComponent构造函数并传入配置项（直接Vue.prototype._init方法）
   return new vnode.componentOptions.Ctor(options)
 }
 

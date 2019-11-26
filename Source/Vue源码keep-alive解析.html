@@ -1,0 +1,93 @@
+<script>
+    /**
+     *  在组件生成真实dom时调用patch方法，最终会调用createElm生成真实dom，其中在组件实例化过程中，它会把keep-alive当作为组件进行初始化和实例化，会调用init钩子，
+     *  第一次执行没有组件实体，因此会执行组件实体的构造函数（这个过程中和基本的组件实例化并没有什么差别）
+     * 
+     *  1、keep-alive是源码内部定义的组件选项配置，它会先注册为全局组件供开发者全局使用，其中render函数定义了它的渲染过程
+        2、和普通组件一致，当父在创建真实节点的过程中，遇到keep-alive的组件会进行组件的初始化和实例化。
+        3、实例化会执行挂载$mount的过程，这一步会执行keep-alive选项中的render函数。
+        4、render函数在初始渲染时，会将渲染的子Vnode进行缓存。同时对应的子真实节点也会被缓存起来
+     */
+    init: function init(vnode, hydrating) {
+        if (
+            vnode.componentInstance &&
+            !vnode.componentInstance._isDestroyed &&
+            vnode.data.keepAlive
+        ) {
+            // kept-alive components, treat as a patch
+            var mountedNode = vnode; // work around flow
+            componentVNodeHooks.prepatch(mountedNode, mountedNode);
+        } else {
+            // 将组件实例赋值给vnode的componentInstance属性
+            var child = vnode.componentInstance = createComponentInstanceForVnode(
+                vnode,
+                activeInstance
+            );
+            child.$mount(hydrating ? vnode.elm : undefined, hydrating);
+        }
+    }
+
+    /**
+     *  keep-alive组件render函数中，会从catch中缓存以及取缓存（其中包含缓存的dom元素）
+     */
+    if (cache[key]) {
+        vnode.componentInstance = cache[key].componentInstance;
+        // make current key freshest
+        remove(keys, key);
+        keys.push(key);
+    } else {
+        // 初次渲染时，将vnode缓存
+        cache[key] = vnode;
+        keys.push(key);
+        // prune oldest entry
+        if (this.max && keys.length > parseInt(this.max)) {
+            pruneCacheEntry(cache, keys[0], keys, this._vnode);
+        }
+    }
+    // 内置的keep-alive组件，让子组件在第一次渲染的时候将vnode和真实的elm进行了缓存
+    /**
+     *  keep-alive内的组件第一次会执行mounted钩子，之后来回切换组件也只会触发deactived和actived钩子，同样也不会触发destroy钩子。
+     *  在patch比较更新完组件后，会对老节点进行销毁操作，以及触发销毁钩子。这里对于keep-alive组件有特殊处理
+     */
+    destroy: function destroy(vnode) {
+        // 组件实例
+        var componentInstance = vnode.componentInstance;
+        // 如果实例还未被销毁
+        if (!componentInstance._isDestroyed) {
+            // 不是keep-alive组件则执行销毁操作
+            if (!vnode.data.keepAlive) {
+                componentInstance.$destroy();
+            } else {
+                // 如果是已经缓存的组件
+                deactivateChildComponent(componentInstance, true /* direct */ );
+            }
+        }
+    }
+    /**
+     *  同样在patch结束也会调用invokeInsertHook触发hook中的insert钩子函数，由于keep-alive组件切换不会销毁，因此_isMounted标记始终为true，因此也不会
+     *  再次调用mounted钩子，而是激活组件，最终调用激活钩子
+     */
+    insert(vnode: MountedComponentVNode) {
+        const {
+            context,
+            componentInstance
+        } = vnode
+        // 判断组件未渲染过，标记未已渲染并执行钩子
+        if (!componentInstance._isMounted) {
+            componentInstance._isMounted = true
+            callHook(componentInstance, 'mounted')
+        }
+        if (vnode.data.keepAlive) {
+            if (context._isMounted) {
+                queueActivatedComponent(componentInstance)
+            } else {
+                activateChildComponent(componentInstance, true /* direct */ )
+            }
+        }
+    }
+    /**
+     *  1. FIFO： 先进先出策略，我们通过记录数据使用的时间，当缓存大小即将溢出时，优先清除离当前时间最远的数据。
+        2. LRU： 最近最少使用。LRU策略遵循的原则是，如果数据最近被访问(使用)过，那么将来被访问的几率会更高，如果以一个数组去记录数据，当有一数据被访问时，该数据会被移动到数组的末尾，表明最近被使用过，当缓存溢出时，会删除数组的头部数据，即将最不频繁使用的数据移除。
+        3. LFU: 计数最少策略。用次数去标记数据使用频率，次数最少的会在缓存溢出时被淘汰。
+     */
+</script>

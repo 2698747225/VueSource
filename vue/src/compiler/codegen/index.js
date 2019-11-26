@@ -99,6 +99,11 @@ export function genElement(el: ASTElement, state: CodegenState): string {
   } else {
     // component or element
     let code
+    /** 
+     * 包含component的动态组件
+     * 普通组件render:"with(this){return _c('div',{attrs:{"id":"app"}},[_c('child1',[_v(_s(test))])],1)}"
+     * 动态组件render:"with(this){return _c('div',{attrs:{"id":"app"}},[_c(chooseTabs,{tag:"component"})],1)}"
+     */
     if (el.component) {
       code = genComponent(el.component, el, state)
     } else {
@@ -614,6 +619,7 @@ function genComponent(
   el: ASTElement,
   state: CodegenState
 ): string {
+  // 存在inlineTemplate，children为null说明内联模板并不是在父组件编译
   const children = el.inlineTemplate ? null : genChildren(el, state, true)
   return `_c(${componentName},${genData(el, state)}${
     children ? `,${children}` : ''

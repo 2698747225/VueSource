@@ -50,7 +50,7 @@ export function initLifecycle(vm: Component) {
   // locate first non-abstract parent
   let parent = options.parent
   if (parent && !options.abstract) {
-    // 循环结束条件是节点没有父节点，abstract为true的情况是keep-alive和transition组件
+    // 循环结束条件是节点没有父节点，abstract为true的情况是keep-alive和transition组件（抽象组件并不会形成真实dom，一般都只是用来做中间处理，因此跳过了抽象组件）
     while (parent.$options.abstract && parent.$parent) {
       parent = parent.$parent
     }
@@ -318,14 +318,17 @@ export function updateChildComponent(
 }
 
 function isInInactiveTree(vm) {
+  // 存在父节点，并且父节点已经停用，直接返回
   while (vm && (vm = vm.$parent)) {
     if (vm._inactive) return true
   }
   return false
 }
 
+// 激活组件
 export function activateChildComponent(vm: Component, direct ? : boolean) {
   if (direct) {
+    // 激活标记
     vm._directInactive = false
     if (isInInactiveTree(vm)) {
       return
@@ -338,22 +341,26 @@ export function activateChildComponent(vm: Component, direct ? : boolean) {
     for (let i = 0; i < vm.$children.length; i++) {
       activateChildComponent(vm.$children[i])
     }
+    // 执行激活钩子
     callHook(vm, 'activated')
   }
 }
-
+// 取消激活子组件
 export function deactivateChildComponent(vm: Component, direct ? : boolean) {
   if (direct) {
+    // deactivate标记
     vm._directInactive = true
     if (isInInactiveTree(vm)) {
       return
     }
   }
   if (!vm._inactive) {
+    // 停用
     vm._inactive = true
     for (let i = 0; i < vm.$children.length; i++) {
       deactivateChildComponent(vm.$children[i])
     }
+    // 执行deactiveated钩子
     callHook(vm, 'deactivated')
   }
 }
